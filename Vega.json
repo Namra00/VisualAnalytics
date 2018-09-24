@@ -1,63 +1,64 @@
 {
-  "$schema": "https://vega.github.io/schema/vega/v4.json",
-  "width": 960,
-  "height": 500,
-  "autosize": "none",
+ "$schema": "https://vega.github.io/schema/vega/v4.json",
+ "width": 960,
+ "height": 500,
+ "autosize": "none",
 
-  "data": [
-    {
-      "name": "unemp",
-      "url": "data/unemployment.tsv",
-      "format": {"type": "tsv", "parse": "auto"}
-    },
-    {
-      "name": "counties",
-      "url": "data/us-10m.json",
-      "format": {"type": "topojson", "feature": "counties"},
-      "transform": [
-        { "type": "lookup", "from": "unemp", "key": "id", "fields": ["id"], "values": ["rate"] },
-        { "type": "filter", "expr": "datum.rate != null" }
-      ]
-    }
-  ],
+ "data": [
+   {
+     "name": "Losses",
+     "url": "https://raw.githubusercontent.com/hheavener/VA-HW3/master/losses2015_transformed.csv",
+     "format": {"type": "csv", "parse": "auto"}
+   },
+   {
+     "name": "states",
+     "url": "data/us-10m.json",
+     "format": {"type": "topojson", "feature": "states"},
+     "transform": [
+       {  "type": "lookup", "from": "Losses", "key": "State_Code", "fields": ["id"], "values": ["Amount","State_Abv"] },
+       { "type": "filter", "expr": "datum.Amount != null" }
+      
+     ]
+   }
+ ],
 
-  "projections": [
-    {
-      "name": "projection",
-      "type": "albersUsa"
-    }
-  ],
+ "projections": [
+   {
+     "name": "projection",
+     "type": "albersUsa"
+   }
+ ],
 
-  "scales": [
-    {
-      "name": "color",
-      "type": "quantize",
-      "domain": [0, 0.15],
-      "range": {"scheme": "blues", "count": 7}
-    }
-  ],
+ "scales": [
+   {
+     "name": "color",
+     "type": "quantize",
+     "domain": [0, 194545],
+     "range": {"scheme": "blues", "count": 5}
+   }
+ ],
 
-  "legends": [
-    {
-      "fill": "color",
-      "orient": "bottom-right",
-      "title": "Unemployment",
-      "format": "0.1%"
-    }
-  ],
+ "legends": [
+   {
+     "fill": "color",
+     "orient": "bottom-right",
+     "title": "Losses",
+     "format": "0.1%"
+   }
+ ],
 
-  "marks": [
-    {
-      "type": "shape",
-      "from": {"data": "counties"},
-      "encode": {
-        "enter": { "tooltip": {"signal": "format(datum.rate, '0.1%')"}},
-        "update": { "fill": {"scale": "color", "field": "rate"} },
-        "hover": { "fill": {"value": "red"} }
-      },
-      "transform": [
-        { "type": "geoshape", "projection": "projection" }
-      ]
-    }
-  ]
+ "marks": [
+   {
+     "type": "shape",
+     "from": {"data": "states"},
+     "encode": {
+       "enter": { "tooltip": {"signal": "format(datum.Amount, '0.1%')"}},
+       "update": { "fill": {"scale": "color", "field": "Amount"} },
+       "hover": { "fill": {"value": "red"} }
+     },
+     "transform": [
+       { "type": "geoshape", "projection": "projection" }
+     ]
+   }
+ ]
 }
