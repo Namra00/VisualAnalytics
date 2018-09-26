@@ -40,7 +40,7 @@
    {
      "name": "color",
      "type": "quantize",
-     "domain": [0, 379999111],
+     "domain": [0, 455555551],
      "range": {"scheme": "blues", "count": 50}
    }
  ],
@@ -49,7 +49,7 @@
    {
      "fill": "color",
      "orient": "bottom-right",
-     "title": "Losses",
+     "title": "Losses"
    }
  ],
 
