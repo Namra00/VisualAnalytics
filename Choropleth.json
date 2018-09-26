@@ -60,7 +60,7 @@
      "encode": {
        "enter": { "tooltip": {"signal": "format(datum.Amount,'0')"}},
        "update": { "fill": {"scale": "color", "field": "Amount"}, 
-       "tooltip": {"signal": "'State : ' + datum.State_Abv  + '    Amount: ' + datum.Amount"}},
+       "tooltip": {"signal": "'State : ' + datum.State_Abv  + '  |  Amount: ' + datum.Amount"}},
        "hover": { "fill": {"value": "red"} }
      },
      "transform": [
