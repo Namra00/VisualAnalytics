@@ -50,7 +50,6 @@
      "fill": "color",
      "orient": "bottom-right",
      "title": "Losses",
-     "format": "0"
    }
  ],
 
@@ -59,7 +58,7 @@
      "type": "shape",
      "from": {"data": "states"},
      "encode": {
-       "enter": { "tooltip": {"signal": "format(datum.Amount)"}},
+       "enter": { "tooltip": {"signal": "format(datum.Amount,'0')"}},
        "update": { "fill": {"scale": "color", "field": "Amount"}, 
         "tooltip": {"signal": "{\"Amount\": ''+datum[\"Amount\"]}"},
        "hover": { "fill": {"value": "red"} }
