@@ -41,7 +41,7 @@
      "name": "color",
      "type": "quantize",
      "domain": [0, 379999111],
-     "range": {"scheme": "blues", "count": 10}
+     "range": {"scheme": "blues", "count": 50}
    }
  ],
 
@@ -59,7 +59,7 @@
      "type": "shape",
      "from": {"data": "states"},
      "encode": {
-       "enter": { "tooltip": {"signal": "format(datum.Amount, '0')"}},
+       "enter": { "tooltip": {"signal": "format(datum.Amount)"}},
        "update": { "fill": {"scale": "color", "field": "Amount"}, 
         "tooltip": {"signal": "{\"Amount\": ''+datum[\"Amount\"]}"},
        "hover": { "fill": {"value": "red"} }
