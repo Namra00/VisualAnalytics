@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  width: 960px;
+  height: 500px;
+  position: relative;
+}
+
+/* stylesheet for your custom graph */
+
+.categories {
+  fill: none;
+  stroke: #fff;
+  stroke-linejoin: round;
+}
+
+.categories-choropleth {
+  fill: #ccc;
+}
+
+#tooltip-container {
+  position: absolute;
+  background-color: #fff;
+  color: #000;
+  padding: 10px;
+  border: 1px solid;
+  display: none;
+}
+
+#canvas svg {
+  border: 0px;
+  height: 5000px;
+}
+
+.tooltip_key {
+  font-weight: bold;
+}
+
+.tooltip_value {
+  margin-left: 20px;
+  float: right;
+}
+
+.x-axis {
+  fill: #000;
+}
+
+/*.chart {
+  width: 96000px;
+  background: #fff;
+  margin: 5px;
+  height: 1000px;
+}
+
+.chart .category-bar {
+  stroke: white;
+  fill: steelblue;
+}
+
+.chart .score {
+  fill: white;
+}
+
+.chart text.name {
+  fill: #000;
+}
+
+.chart line {
+  stroke: #c1c1c1;
+}
+
+.chart .rule {
+  fill: #000;
+}
+*/
+.main-category-text {
+  fill: #FF4A4A;
+}
+
+.main-category-bar {
+  stroke: #FF4A4A;
+  stroke-width: 2px;
+}
+</style>
+
+<div id="tooltip-container"></div>
+<div id="canvas-svg"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+<!-- <script src="//cdnjs.cloudflare.com/ajax/libs/topojson/1.1.0/topojson.min.js"></script> -->
+<script src="https://d3js.org/topojson.v2.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+
+<script>
+
+d3.csv("https://raw.githubusercontent.com/ShailyBarjatya/Tableau-vega/master/losses2015_transformed.csv", function(err, data) {
+
+  var config = {"color1":"#c3e2ff","color2":"#08306B","stateDataColumn":"State_Code","valueDataColumn":"Amount"}
+
+  var WIDTH = 800, HEIGHT = 400;
+
+  var COLOR_COUNTS = 9;
+
+  var SCALE = 0.7;
+
+  // var MAIN_CATEGORY = config.mainCategory;
+  // var AVG_CATEGORY = config.averageCategory;
+
+  function Interpolate(start, end, steps, count) {
+      var s = start,
+          e = end,
+          final = s + (((e - s) / steps) * count);
+      return Math.floor(final);
+  }
+
+  function Color(_r, _g, _b) {
+      var r, g, b;
+      var setColors = function(_r, _g, _b) {
+          r = _r;
+          g = _g;
+          b = _b;
+      };
+
+      setColors(_r, _g, _b);
+      this.getColors = function() {
+          var colors = {
+              r: r,
+              g: g,
+              b: b
+          };
+          return colors;
+      };
+  }
+
+  function hexToRgb(hex) {
+      var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+      } : null;
+  }
+
+  var COLOR_FIRST = config.color1, COLOR_LAST = config.color2;
+
+  var rgb = hexToRgb(COLOR_FIRST);
+
+  var COLOR_START = new Color(rgb.r, rgb.g, rgb.b);
+
+  rgb = hexToRgb(COLOR_LAST);
+  var COLOR_END = new Color(rgb.r, rgb.g, rgb.b);
+
+  var MAP_CATEGORY = config.stateDataColumn;
+  var MAP_VALUE = config.valueDataColumn;
+
+  var width = WIDTH,
+      height = HEIGHT;
+
+  var valueById = d3.map();
+
+  var startColors = COLOR_START.getColors(),
+      endColors = COLOR_END.getColors();
+
+  var colors = [];
+
+  for (var i = 0; i < COLOR_COUNTS; i++) {
+    var r = Interpolate(startColors.r, endColors.r, COLOR_COUNTS, i);
+    var g = Interpolate(startColors.g, endColors.g, COLOR_COUNTS, i);
+    var b = Interpolate(startColors.b, endColors.b, COLOR_COUNTS, i);
+    colors.push(new Color(r, g, b));
+  }
+
+  var quantize = d3.scale.quantize()
+      .domain([0, 200000000])
+      .range(d3.range(COLOR_COUNTS).map(function(i) { return i }));
+
+  var path = d3.geo.path();
+
+  var svg = d3.select("#canvas-svg").append("svg")
+      .attr("width", width)
+      .attr("height", height);
+
+  d3.tsv("https://s3-us-west-2.amazonaws.com/vida-public/geo/us-state-names.tsv", function(error, names) {
+
+  name_id_map = {};
+  id_name_map = {};
+  for (var i = 0; i < names.length; i++) {
+    name_id_map[names[i].name] = names[i].id;
+    id_name_map[names[i].id] = names[i].name;
+  }
+
+  data.forEach(function(d) {
+    var id = d.State_Code[d[MAP_CATEGORY]];
+    valueById.set(id, +d[MAP_VALUE]);
+  });
+
+  quantize.domain([d3.min(data, function(d){ return +d[MAP_VALUE] }),
+    d3.max(data, function(d){ return +d[MAP_VALUE] })]);
+
+  function makeMap(us) {
+    //if (damage_name == "") {
+          //  $("#damage_lb").html("All");
+            mydata = d3.nest()
+                .key(function(d) {
+                    return d.State_Code;
+                })
+                .rollup(function(d) { //rollup --->sum the values -->aggreagte
+                    return d3.sum(d, function(g) {
+                        return g.Amount;
+                    });
+                })
+                .entries(data);
+mydata.sort(function(a, b) { return b.value - a.value; });
+console.log(mydata);
+name_id_map = {};
+
+    for (var i = 0; i < mydata.length; i++) {
+      console.log(mydata[i])
+        var dataState = mydata[i].key;
+        var dataValue = mydata[i].values;
+        name_id_map[dataState] = dataValue;
+        for (var j = 0; j < us.objects.states.length; j++) {
+            var jsonState = us.objects.states[j].id;
+
+            if (dataState == jsonState) {
+                us.states[j].properties.value = dataValue;
+                break;
+            }
+        }
+
+    }
+
+console.log(name_id_map)
+    svg.append("g")
+        .attr("class", "categories-choropleth")
+      .selectAll("path")
+        .data(topojson.feature(us, us.objects.states).features)
+      .enter().append("path")
+        .attr("transform", "scale(" + SCALE + ")")
+        .style("fill", function(d) {
+          if (name_id_map[d.id]) {
+            var i = quantize(name_id_map[d.id]);
+            var color = colors[i].getColors();
+            return "rgb(" + color.r + "," + color.g +
+                "," + color.b + ")";
+          } else {
+            return "";
+          }
+        })
+        .attr("d", path)
+        .on("mousemove", function(d) {
+            var html = "";
+
+            html += "<div class=\"tooltip_kv\">";
+            html += "<span class=\"tooltip_key\">";
+            html += id_name_map[d.id];
+            html += " : "
+            html += name_id_map[parseInt(d.id)];
+            html += "</span>";
+            html += "<span class=\"tooltip_value\">";
+            html += (valueById.get(d.id) ? valueById.get(d.id) : "");
+            html += "";
+            html += "</span>";
+            html += "</div>";
+
+            $("#tooltip-container").html(html);
+            $(this).attr("fill-opacity", "0.8");
+            $("#tooltip-container").show();
+
+            var coordinates = d3.mouse(this);
+
+            var map_width = $('.categories-choropleth')[0].getBoundingClientRect().width;
+
+            if (d3.event.pageX < map_width / 2) {
+              d3.select("#tooltip-container")
+                .style("top", (d3.event.pageY + 15) + "px")
+                .style("left", (d3.event.pageX + 15) + "px");
+            } else {
+              var tooltip_width = $("#tooltip-container").width();
+              d3.select("#tooltip-container")
+                .style("top", (d3.event.pageY + 15) + "px")
+                .style("left", (d3.event.pageX - tooltip_width - 30) + "px");
+            }
+        })
+        .on("mouseout", function() {
+                $(this).attr("fill-opacity", "1.0");
+                $("#tooltip-container").hide();
+            });
+
+    svg.append("path")
+        .datum(topojson.mesh(us, us.objects.states, function(a, b) { return a !== b; }))
+        .attr("class", "categories")
+        .attr("transform", "scale(" + SCALE + ")")
+        .attr("d", path);
+  }
+
+  d3.json("https://raw.githubusercontent.com/ShailyBarjatya/Tableau-vega/master/us-10m.json", function(error, us) {
+    makeMap(us);
+  });
+
+  });
+});
+
+</script>
