@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+<head>
+  <title>Bar Chart D3</title>
+  <style>
+  body {
+    margin: 15px;
+    background-color: #F1F3F3
+  }
+  .bar:hover{
+    fill: red;
+  }
+  .bar {
+    fill: #4286f4;
+  }
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: #D4D8DA;
+    stroke-width: 1px;
+    shape-rendering: crispEdges;
+  }
+  .x path {
+    display: none;
+  }
+  .toolTip {
+    position: absolute;
+    display: none;
+    min-width: 80px;
+    height: auto;
+    background: none repeat scroll 0 0 #ffffff;
+    border: 1px solid #6F257F;
+    padding: 14px;
+    text-align: center;
+  }
+  .state{
+    fill: black;
+    stroke: black;
+    stroke-width: 1;
+  }
+  .states :hover {
+    fill:red;
+    fill-opacity:0.5;
+  }
+  .state-borders {
+    fill: pink;
+    stroke: black;
+    stroke-width: 0.5px;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
+  .categories {
+    fill: none;
+    stroke: black;
+    stroke-linejoin: round;
+  }
+  #tooltip-container {
+    position: absolute;
+    background-color: #fff;
+    color: #000;
+    padding: 10px;
+    border: 1px solid;
+    display: none;
+  }
+  #canvas svg {
+    border: 0px;
+  }
+  .tooltip_key {
+    font-weight: bold;
+  }
+  .tooltip_value {
+    margin-left: 20px;
+    float: right;
+  }
+  .x-axis {
+    fill: red;
+  }
+  path{
+      stroke:black;
+      pointer-events:all;
+  }
+  path:hover{
+      fill:red;
+      stroke:steelblues;
+  }
+  </style>
+
+  <svg id="svg1"></svg>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <div id="tooltip-container"></div>
+
+  <div id="canvas-svg"></div>
+
+  <svg width="1260" height="600" id="svg"></svg>
+  <script src="https://d3js.org/topojson.v2.min.js"></script>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+  <script type="text/javascript">
+  var myEntireData;
+  var myData_world;
+  var myData_bar;
+  var myEntireData;
+  var margin = {top: 20, right: 20, bottom: 50, left: 150}
+  function loadData(){
+  d3.csv("https://raw.githubusercontent.com/Namra00/VisualAnalytics/master/losses2015_transformed.csv", function(error, data) {
+    if (error) throw error;
+    myEntireData = data;
+    console.log(myEntireData)
+    d3.select("#svg1").attr("width", 1600 - margin.left - margin.right)
+    .attr("height", 1200 - margin.top - margin.bottom)
+    .append("g")
+    .attr("id", "svg_bar_g_id")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    d3.select("#svg").attr("width", 1300 - margin.left - margin.right)
+    .attr("height", 600 - margin.top - margin.bottom)
+    .append("g")
+    .attr("id", "svg_map_g_id")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    generateDataBar(null,true,false)
+    create_bar()
+    generateDataBar(null,false,true)
+    create_map()
+   });
+    }
+    function generateDataBar(filter,bar,map)
+            {
+              if (filter && bar)
+              {
+                myData_bar = d3.nest()
+                            .key(function(d) { return d.Damage_Descp;})
+                            .rollup(function(d) {
+                              return d3.sum(d, function(g) {return g.Amount; });
+                            })
+                            .entries(myEntireData.filter(function(d) {console.log("state code" + d.State_Code); return d.State_Code == filter;}));
+              } else if(bar)
+              {
+                myData_bar = d3.nest().key(function(d) { return d.Damage_Descp;})
+                .rollup(function(d) {
+                  return d3.sum(d, function(g) {return g.Amount; });
+              }).entries(myEntireData);
+              }
+              if (filter && map){
+              myData_world = d3.nest()
+              .key(function(d) { return d.State_Code;})
+              .rollup(function(d) {
+                return d3.sum(d, function(g) {return g.Amount; });
+              })
+              .entries(myEntireData.filter(function(d) { return d.Damage_Descp == filter;}));
+              }
+              else if(map){
+              myData_world = d3.nest()
+              .key(function(d) { return d.State_Code;})
+              .rollup(function(d) {
+                return d3.sum(d, function(g) {return g.Amount; });
+              })
+              .entries(myEntireData);
+              }
+            }
+     function create_bar(){
+     var height = 1000
+     var width = 1400
+     var g = d3.select("#svg_bar_g_id");
+    myData_bar.sort(function(a, b) { return b.value - a.value; });
+   var x = d3.scaleLinear().range([0, width]);
+    var y = d3.scaleBand().range([height, 0]);
+    x.domain([0, d3.max(myData_bar, function(d) { return d.value; })]);
+    y.domain(myData_bar.map(function(d) { return d.key; })).padding(0.1);
+    var tooltip = d3.select("body").append("div").attr("class", "toolTip");
+    g.append("g")
+    .attr("class", "x axis")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(x));
+    g.append("g")
+    .attr("class", "y axis")
+    .call(d3.axisLeft(y));
+    g.selectAll(".bar")
+    .data(myData_bar)
+    .enter().append("rect")
+    .attr("class", "bar")
+    .attr("x", 0)
+    .attr("height", y.bandwidth())
+    .attr("y", function(d) { return y(d.key); })
+    .attr("width", function(d) { return x(d.value); })
+    .on("mousemove", function(d){
+      tooltip
+      .style("left", d3.event.pageX - 50 + "px")
+      .style("top", d3.event.pageY - 70 + "px")
+      .style("display", "inline-block")
+      .html((d.key) + "<br>" + "$" + (d.value));
+      generateDataBar(d.key,false,true)
+      removeDataMap()
+      create_map()
+    })
+    .on("mouseout", function(d){ tooltip.style("display", "none");
+    generateDataBar(null,false,true)
+     removeDataMap()
+      create_map()});
+  }
+  function create_map(){
+       d3.json("https://d3js.org/us-10m.v1.json", function(error, us) {
+            var height = 600
+               var width = 1000
+               var path = d3.geoPath();
+               var svg = d3.select("#svg_map_g_id");
+               name_id_map = {};
+               console.log("mymapdata" + myData_world.length)
+          for (var i = 0; i < myData_world.length; i++) {
+          var dataState = myData_world[i].key;
+          var dataValue = myData_world[i].value;
+          name_id_map[dataState] = dataValue;
+          for (var j = 0; j < us.objects.states.length; j++) {
+          var jsonState = us.objects.states[j].id;
+          if (dataState == jsonState) {
+          us.states[j].properties.value = dataValue;
+          break;
+          }
+          }
+          }
+          var SCALE = 0.7;
+          svg.append("g")
+          .attr("class", "categories-choropleth")
+          .selectAll("path")
+          .data(topojson.feature(us, us.objects.states).features)
+          .enter().append("path")
+          .attr("d", path).attr("fill",function(d){
+          if (name_id_map[parseInt(d.id)] > 10000000)
+              return "Maroon"
+          else if (name_id_map[parseInt(d.id)] > 1000000)
+               return "Chocolate"
+          else if (name_id_map[parseInt(d.id)] > 100000)
+                return "SandyBrown"
+          else if (name_id_map[parseInt(d.id)] > 10000)
+                return "Tan"
+          else if (name_id_map[parseInt(d.id)] > 1000)
+                return "Wheat"
+          else return "Bisque"
+           }
+          )
+          .on("mouseover", function(d) {
+          var html = "";
+          var val = name_id_map[parseInt(d.id)];
+          html += "<div class=\"tooltip_kv\">";
+              html += "<span class=\"tooltip_key\"\>Amount:";
+                  html += val;
+                  html += "</span>";
+              html += "</div>";
+          $("#tooltip-container").html(html);
+          $(this).attr("fill-opacity", "0.8");
+          $("#tooltip-container").show();
+          var coordinates = d3.mouse(this);
+          var map_width = $('.categories-choropleth')[0].getBoundingClientRect().width;
+          if (d3.event.pageX < map_width / 2) {
+          d3.select("#tooltip-container")
+          .style("top", (d3.event.pageY + 15) + "px")
+          .style("left", (d3.event.pageX + 15) + "px");
+          } else {
+          var tooltip_width = $("#tooltip-container").width();
+          d3.select("#tooltip-container")
+          .style("top", (d3.event.pageY + 15) + "px")
+          .style("left", (d3.event.pageX - tooltip_width - 30) + "px");
+          }
+          generateDataBar(d.id,true,false)
+          removeBarMap()
+          create_bar()
+          })
+          .on("mouseout", function() {
+          $(this).attr("fill-opacity", "orange");
+          $("#tooltip-container").hide();
+          generateDataBar(null,true,false)
+          removeBarMap()
+          create_bar()
+          });
+          svg.append("path")
+          .datum(topojson.mesh(us, us.objects.states, function(a, b) { return a !== b; }))
+          .attr("class", "path");
+          });
+         }
+       function removeDataMap() {
+          var svg = d3.select("#svg_map_g_id");
+          svg.selectAll("path").remove();
+          svg.selectAll("clipPath").remove();
+          svg.selectAll("text").remove();
+        }
+       function removeBarMap() {
+          var svg = d3.select("#svg_bar_g_id");
+          svg.selectAll("rect").remove();
+          svg.selectAll("clipPath").remove();
+          svg.selectAll("text").remove();
+        }
+  window.onload = loadData;
+  </script>
+
+</html>
